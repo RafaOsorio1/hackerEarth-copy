@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AssessmentSession {
+  id                    String              @id @default(uuid())
+  userId                String
+  exerciseId            String
+  exercise              ExerciseDefinition  @relation(fields: [exerciseId], references: [id])
+  selectedTechnologies  String[]
+  difficulty            String              // BEGINNER | INTERMEDIATE | ADVANCED
+  durationMinutes       Int                 // 20 to 60
+  sessionMode           String              @default("STANDARD") // STANDARD | SPEED_DRILL
+  parentSessionId       String?
+  parentSession         AssessmentSession?  @relation("SessionRetries", fields: [parentSessionId], references: [id])
+  childSessions         AssessmentSession[] @relation("SessionRetries")
+  startedAt             DateTime            @default(now())
+  expiresAt             DateTime
+  submittedAt           DateTime?
+  status                String              @default("PENDING") // PENDING | ACTIVE | SUBMITTED | EXPIRED | EVALUATING | EVALUATED | FAILED
+  currentCodeSnapshot   Json
+  finalScore            Float?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  submissions           Submission[]
+
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([status])
+}
+
+model ExerciseDefinition {
+  id                       String              @id @default(uuid())
+  title                    String
+  description              String
+  technologies             String[]
+  difficulty               String              // BEGINNER | INTERMEDIATE | ADVANCED
+  architecturePattern      String              @default("SINGLE_INTEGRATED_PROJECT")
+  hasLivePreview           Boolean             @default(false)
+  estimatedDurationMinutes Int
+  starterFiles             Json                // Array<{ path: string, content: string, readOnly: boolean }>
+  publicTests              Json                // Array<{ path: string, content: string }>
+  privateTests             Json                // Array<{ path: string, content: string }>
+  canonicalSolution        Json                // Array<{ path: string, content: string }>
+  validationStatus         String              @default("PENDING") // PENDING | VERIFIED | FAILED
+  createdAt                DateTime            @default(now())
+  sessions                 AssessmentSession[]
+}
+
+model Submission {
+  id               String            @id @default(uuid())
+  sessionId        String
+  session          AssessmentSession @relation(fields: [sessionId], references: [id])
+  trigger          String            // MANUAL | AUTO_TIMEOUT
+  submittedCode    Json              // Record<string, string>
+  submittedAt      DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  evaluationResult EvaluationResult?
+
+  @@index([sessionId])
+}
+
+model EvaluationResult {
+  id                  String     @id @default(uuid())
+  submissionId        String     @unique
+  submission          Submission @relation(fields: [submissionId], references: [id])
+  numericScore        Float      // 0.0 to 100.0
+  passedPrivateTests  Int
+  totalPrivateTests   Int
+  detailedTestOutputs Json
+  aiFeedbackSummary   String
+  createdAt           DateTime   @default(now())
+}

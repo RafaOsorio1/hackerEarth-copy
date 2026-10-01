@@ -1,0 +1,381 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HackerEarth-Copy Assessment Platform API",
+    "version": "1.0.0",
+    "description": "API contract for initiating, managing, and evaluating timed technical coding assessments."
+  },
+  "paths": {
+    "/api/assessments": {
+      "post": {
+        "summary": "Start a new assessment session",
+        "description": "Generates a tailored challenge using AI, validates its canonical solution, and initializes a timed session.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssessmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Assessment session successfully initialized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input parameters (e.g. missing React dialect or invalid technology combinations)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "AI generation or pre-validation failure after retries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/{id}": {
+      "get": {
+        "summary": "Get assessment session details",
+        "description": "Retrieves the active workspace, remaining duration, challenge instructions, starter files, and public tests. Private tests are strictly excluded.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session details and candidate workspace manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentWorkspaceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Assessment session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/{id}/snapshot": {
+      "put": {
+        "summary": "Save candidate code revision snapshot",
+        "description": "Auto-saves the candidate's current working files. Rejects updates if the session is expired or submitted.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSnapshotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Snapshot successfully persisted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "savedAt": { "type": "string", "format": "date-time" },
+                    "remainingSeconds": { "type": "integer" }
+                  },
+                  "required": ["savedAt", "remainingSeconds"]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Session expired or already submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/{id}/submit": {
+      "post": {
+        "summary": "Submit assessment solution for evaluation",
+        "description": "Locks the session and dispatches the final solution to the server sandbox for private test evaluation.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAssessmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Submission accepted and evaluation started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissionId": { "type": "string", "format": "uuid" },
+                    "status": { "type": "string", "enum": ["EVALUATING"] }
+                  },
+                  "required": ["submissionId", "status"]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Submission rejected: time window expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/{id}/results": {
+      "get": {
+        "summary": "Get assessment evaluation scorecard and feedback",
+        "description": "Returns final numerical score, passed/failed private test breakdown with failure causes, and pedagogical AI guidance.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evaluation results and feedback report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Assessment not yet evaluated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/{id}/speed-drill": {
+      "post": {
+        "summary": "Initiate Speed Drill retry of the same challenge",
+        "description": "Resets the same exercise with a clean starter state and a fresh countdown timer to practice speed and agility.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Speed drill session initialized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateAssessmentRequest": {
+        "type": "object",
+        "properties": {
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["HTML", "CSS", "JavaScript", "TypeScript", "React", "NodeJS"]
+            },
+            "minItems": 1
+          },
+          "reactDialect": {
+            "type": "string",
+            "enum": ["JavaScript", "TypeScript"],
+            "description": "Mandatory if React is included in technologies"
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": ["Beginner", "Intermediate", "Advanced"]
+          }
+        },
+        "required": ["technologies", "difficulty"]
+      },
+      "AssessmentSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "exerciseId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "difficulty": { "type": "string" },
+          "technologies": { "type": "array", "items": { "type": "string" } },
+          "durationMinutes": { "type": "integer" },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "sessionMode": { "type": "string", "enum": ["STANDARD", "SPEED_DRILL"] },
+          "hasLivePreview": { "type": "boolean" }
+        },
+        "required": ["sessionId", "exerciseId", "title", "difficulty", "technologies", "durationMinutes", "startedAt", "expiresAt", "sessionMode", "hasLivePreview"]
+      },
+      "AssessmentWorkspaceResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "technologies": { "type": "array", "items": { "type": "string" } },
+          "hasLivePreview": { "type": "boolean" },
+          "remainingSeconds": { "type": "integer" },
+          "status": { "type": "string" },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string" },
+                "content": { "type": "string" },
+                "readOnly": { "type": "boolean" }
+              },
+              "required": ["path", "content", "readOnly"]
+            }
+          }
+        },
+        "required": ["sessionId", "title", "description", "technologies", "hasLivePreview", "remainingSeconds", "status", "files"]
+      },
+      "SaveSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Map of relative file paths to their current code contents"
+          }
+        },
+        "required": ["files"]
+      },
+      "SubmitAssessmentRequest": {
+        "type": "object",
+        "properties": {
+          "trigger": { "type": "string", "enum": ["MANUAL", "AUTO_TIMEOUT"] },
+          "files": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        },
+        "required": ["trigger", "files"]
+      },
+      "EvaluationResultResponse": {
+        "type": "object",
+        "properties": {
+          "numericScore": { "type": "number", "minimum": 0, "maximum": 100 },
+          "passedPrivateTests": { "type": "integer" },
+          "totalPrivateTests": { "type": "integer" },
+          "testOutputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "testName": { "type": "string" },
+                "status": { "type": "string", "enum": ["PASSED", "FAILED"] },
+                "errorMessage": { "type": "string" },
+                "diff": { "type": "string" },
+                "durationMs": { "type": "number" }
+              },
+              "required": ["testName", "status", "durationMs"]
+            }
+          },
+          "aiFeedbackSummary": { "type": "string" }
+        },
+        "required": ["numericScore", "passedPrivateTests", "totalPrivateTests", "testOutputs", "aiFeedbackSummary"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "code": { "type": "string" }
+        },
+        "required": ["error", "message", "code"]
+      }
+    }
+  }
+}

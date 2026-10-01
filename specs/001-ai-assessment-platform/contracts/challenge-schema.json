@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeneratedProjectChallenge",
+  "type": "object",
+  "description": "Schema enforcing deterministic structured outputs for dynamically generated technical challenges.",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Short, realistic engineering challenge title (e.g. 'Build a Filterable Activity Feed')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Comprehensive markdown instructions including user stories, constraints, acceptance criteria, and guidance."
+    },
+    "technologies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Strict subset of the requested technologies (must not contain unselected tech)."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["Beginner", "Intermediate", "Advanced"]
+    },
+    "estimatedDurationMinutes": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 60,
+      "description": "Accurate, realistic time budget for completing the exercise."
+    },
+    "starterFiles": {
+      "type": "array",
+      "description": "Starter repository files presented to candidate in the workspace.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Relative file path (e.g., 'src/components/TaskFilter.tsx')" },
+          "content": { "type": "string", "description": "Initial starter boilerplate code with clear TODO comments" },
+          "readOnly": { "type": "boolean", "description": "True for configuration files (tsconfig, package.json), false for implementation files" }
+        },
+        "required": ["path", "content", "readOnly"]
+      },
+      "minItems": 2
+    },
+    "publicTests": {
+      "type": "array",
+      "description": "Automated tests visible to the user during the practice session.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Relative path (e.g., 'tests/public/render.test.ts')" },
+          "content": { "type": "string", "description": "Vitest or Jest test suite verifying the primary happy-path contracts" }
+        },
+        "required": ["path", "content"]
+      },
+      "minItems": 1
+    },
+    "privateTests": {
+      "type": "array",
+      "description": "Private automated tests strictly withheld until final evaluation.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Relative path (e.g., 'tests/private/edge-cases.test.ts')" },
+          "content": { "type": "string", "description": "Comprehensive tests verifying edge cases, error conditions, and boundary behavior" }
+        },
+        "required": ["path", "content"]
+      },
+      "minItems": 2
+    },
+    "canonicalSolution": {
+      "type": "array",
+      "description": "Working reference solution files used by the platform to pre-validate the exercise before user presentation.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Relative file path matching corresponding starter file" },
+          "content": { "type": "string", "description": "Fully working implementation code passing 100% of public and private tests" }
+        },
+        "required": ["path", "content"]
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "technologies",
+    "difficulty",
+    "estimatedDurationMinutes",
+    "starterFiles",
+    "publicTests",
+    "privateTests",
+    "canonicalSolution"
+  ]
+}

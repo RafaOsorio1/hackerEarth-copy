@@ -14,6 +14,13 @@ Thumbs.db
 dist/
 build/
 *.log
+.turbo/
+.next/
+coverage/
+out/
 
 # Subfolder temporary
 hackerearth-copy/
+
+*.tsbuildinfo
+
