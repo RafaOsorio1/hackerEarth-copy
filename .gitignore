@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Builds & logs
+dist/
+build/
+*.log
+
+# Subfolder temporary
+hackerearth-copy/
