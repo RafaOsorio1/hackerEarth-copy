@@ -26,9 +26,13 @@ export class TechnologyLeakDetector {
     for (const file of files) {
       const lowerPath = file.path.toLowerCase();
       const content = file.content;
+      const isTestFile =
+        lowerPath.startsWith('tests/') ||
+        lowerPath.includes('.test.') ||
+        lowerPath.includes('.spec.');
 
-      // 1. HTML+CSS only: Reject any script or JS/TS file
-      if (htmlCssOnly) {
+      // 1. HTML+CSS only: Reject any script or JS/TS file in candidate implementation files
+      if (htmlCssOnly && !isTestFile) {
         if (
           lowerPath.endsWith('.js') ||
           lowerPath.endsWith('.ts') ||

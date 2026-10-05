@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { cleanJson } from './gemini';
 import {
   GenerateChallengeParams,
   FeedbackGenerationParams,
@@ -40,7 +41,7 @@ export class OpenAiProvider implements IAiModelProvider {
       throw new Error(`OpenAI returned empty response for model ${this.modelName}`);
     }
 
-    const parsedJson = JSON.parse(content);
+    const parsedJson = JSON.parse(cleanJson(content));
     return GeneratedChallengeSchema.parse(parsedJson);
   }
 

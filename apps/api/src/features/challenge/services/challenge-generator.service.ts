@@ -41,7 +41,15 @@ export class ChallengeGeneratorService {
     };
 
     try {
-      let challenge = await generateSingle();
+      let challenge: GeneratedChallenge;
+      try {
+        challenge = await generateSingle();
+      } catch (firstErr) {
+        console.warn(
+          `[ChallengeGenerator] Initial generation failed (${firstErr instanceof Error ? firstErr.message : String(firstErr)}). Attempting single retry...`,
+        );
+        challenge = await generateSingle();
+      }
 
       if (this.preValidator) {
         let validation = await this.preValidator.validate(challenge, {

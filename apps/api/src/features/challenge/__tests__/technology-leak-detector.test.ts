@@ -86,4 +86,35 @@ describe('TechnologyLeakDetector Unit Tests (T048)', () => {
     expect(result.hasLeak).toBe(false);
     expect(result.violations).toHaveLength(0);
   });
+
+  it('should allow automated runner test files (.test.js) in HTML-only challenges while rejecting candidate script files', () => {
+    const selected: SupportedTechnology[] = ['HTML'];
+    const validFilesWithTestSuites = [
+      {
+        path: 'index.html',
+        content: '<!DOCTYPE html><html><body><h1>Accessible Title</h1></body></html>',
+      },
+      { path: 'styles.css', content: 'h1 { font-size: 2rem; }' },
+      {
+        path: 'tests/public/structure.test.js',
+        content: 'test("has h1", () => { expect(document.querySelector("h1")).toBeTruthy(); });',
+      },
+      {
+        path: 'tests/private/accessibility.test.js',
+        content: 'test("a11y rules", () => { expect(true).toBe(true); });',
+      },
+    ];
+
+    const cleanResult = detector.detectLeaks(selected, undefined, validFilesWithTestSuites);
+    expect(cleanResult.hasLeak).toBe(false);
+    expect(cleanResult.violations).toHaveLength(0);
+
+    const candidateWithScript = [
+      ...validFilesWithTestSuites,
+      { path: 'script.js', content: 'console.log("unwanted candidate script");' },
+    ];
+    const leakResult = detector.detectLeaks(selected, undefined, candidateWithScript);
+    expect(leakResult.hasLeak).toBe(true);
+    expect(leakResult.violations.some((v) => v.includes('script.js'))).toBe(true);
+  });
 });

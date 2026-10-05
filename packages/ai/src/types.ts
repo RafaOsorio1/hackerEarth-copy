@@ -41,7 +41,7 @@ export const GeneratedChallengeSchema = z.object({
   estimatedDurationMinutes: z.number().int().min(20).max(60),
   starterFiles: z.array(StarterFileSchema).min(2),
   publicTests: z.array(TestFileSchema).min(1),
-  privateTests: z.array(TestFileSchema).min(2),
+  privateTests: z.array(TestFileSchema).min(1),
   canonicalSolution: z.array(CanonicalSolutionFileSchema).min(1),
 });
 

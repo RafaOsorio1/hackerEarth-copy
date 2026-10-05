@@ -8,26 +8,80 @@ import {
 } from '../types';
 import { buildChallengePrompt, buildFeedbackPrompt } from '../prompts/challengePrompt';
 
-function cleanJson(raw: string): string {
+export function cleanJson(raw: string): string {
   let cleaned = raw.trim();
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
+
+  // If wrapped in a markdown code block (```json ... ``` or ``` ... ```), extract its contents
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const textToScan = codeBlockMatch && codeBlockMatch[1] ? codeBlockMatch[1] : cleaned;
+
+  const firstBrace = textToScan.indexOf('{');
+  if (firstBrace === -1) {
+    return textToScan.trim();
   }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let endBrace = -1;
+
+  for (let i = firstBrace; i < textToScan.length; i++) {
+    const char = textToScan[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          endBrace = i;
+          break;
+        }
+      }
+    }
   }
-  cleaned = cleaned.trim();
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+
+  if (endBrace !== -1) {
+    return textToScan.substring(firstBrace, endBrace + 1).trim();
   }
-  return cleaned.trim();
+
+  const lastBrace = textToScan.lastIndexOf('}');
+  if (lastBrace !== -1 && lastBrace > firstBrace) {
+    return textToScan.substring(firstBrace, lastBrace + 1).trim();
+  }
+
+  return textToScan.trim();
 }
 
 function normalizeChallenge(data: Record<string, unknown>): unknown {
+  if (data.privateTests && !Array.isArray(data.privateTests) && typeof data.privateTests === 'object') {
+    data.privateTests = [data.privateTests];
+  }
+  if (data.publicTests && !Array.isArray(data.publicTests) && typeof data.publicTests === 'object') {
+    data.publicTests = [data.publicTests];
+  }
+  if (data.starterFiles && !Array.isArray(data.starterFiles) && typeof data.starterFiles === 'object') {
+    data.starterFiles = [data.starterFiles];
+  }
+  if (data.canonicalSolution && !Array.isArray(data.canonicalSolution) && typeof data.canonicalSolution === 'object') {
+    data.canonicalSolution = [data.canonicalSolution];
+  }
+
   if (data.challenge_metadata && !data.title) {
     const meta = data.challenge_metadata as Record<string, unknown>;
     const instructions = (data.instructions || {}) as Record<string, unknown>;

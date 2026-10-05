@@ -170,4 +170,74 @@ describe('ChallengeGeneratorService', () => {
     expect(mockPreValidator.validate).toHaveBeenCalledTimes(2);
     expect(mockProvider.generateChallenge).toHaveBeenCalledTimes(2);
   });
+
+  it('should successfully generate challenge for a single technology with a single private test file', async () => {
+    const singleTechChallenge: GeneratedChallenge = {
+      title: 'Array Flatten Utility',
+      description: 'Implement a recursive deep flatten function in JavaScript.',
+      technologies: ['JavaScript'],
+      difficulty: 'Beginner',
+      estimatedDurationMinutes: 25,
+      starterFiles: [
+        { path: 'src/flatten.js', content: 'export function flatten(arr) {}', readOnly: false },
+        { path: 'package.json', content: '{"name": "flatten"}', readOnly: true },
+      ],
+      publicTests: [{ path: 'tests/public/basic.test.js', content: 'test("basic flatten", () => {})' }],
+      privateTests: [
+        { path: 'tests/private/edge_cases.test.js', content: 'test("deeply nested & mixed types", () => {})' },
+      ],
+      canonicalSolution: [
+        {
+          path: 'src/flatten.js',
+          content: 'export function flatten(arr) { return arr.flat(Infinity); }',
+        },
+      ],
+    };
+
+    const mockProvider: IAiModelProvider = {
+      providerId: 'mock-gemini',
+      modelName: 'gemini-3-flash-preview',
+      generateChallenge: vi.fn().mockResolvedValue(singleTechChallenge),
+      generateFeedback: vi.fn(),
+    };
+
+    const service = new ChallengeGeneratorService();
+    const challenge = await service.generate(
+      {
+        technologies: ['JavaScript'],
+        difficulty: 'Beginner',
+      },
+      mockProvider,
+    );
+
+    expect(challenge.title).toBe('Array Flatten Utility');
+    expect(challenge.technologies).toEqual(['JavaScript']);
+    expect(challenge.privateTests).toHaveLength(1);
+    expect(challenge.privateTests[0]?.path).toBe('tests/private/edge_cases.test.js');
+  });
+
+  it('should automatically retry once if provider.generateChallenge throws initially', async () => {
+    const mockProvider: IAiModelProvider = {
+      providerId: 'mock-gemini',
+      modelName: 'gemini-3-flash-preview',
+      generateChallenge: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Gemini API rate limit or JSON parse failure'))
+        .mockResolvedValueOnce(mockGeneratedChallenge),
+      generateFeedback: vi.fn(),
+    };
+
+    const service = new ChallengeGeneratorService();
+    const challenge = await service.generate(
+      {
+        technologies: ['React', 'TypeScript'],
+        difficulty: 'Intermediate',
+        reactDialect: 'TypeScript',
+      },
+      mockProvider,
+    );
+
+    expect(challenge.title).toBe('Real-Time Notification Banner');
+    expect(mockProvider.generateChallenge).toHaveBeenCalledTimes(2);
+  });
 });

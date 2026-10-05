@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { cleanJson } from './gemini';
 import {
   GenerateChallengeParams,
   FeedbackGenerationParams,
@@ -35,18 +36,7 @@ export class ClaudeProvider implements IAiModelProvider {
       throw new Error(`Anthropic returned invalid block structure for model ${this.modelName}`);
     }
 
-    // Strip optional markdown ```json wrapper if present
-    let raw = block.text.trim();
-    if (raw.startsWith('```json')) {
-      raw = raw
-        .replace(/^```json/, '')
-        .replace(/```$/, '')
-        .trim();
-    } else if (raw.startsWith('```')) {
-      raw = raw.replace(/^```/, '').replace(/```$/, '').trim();
-    }
-
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(cleanJson(block.text));
     return GeneratedChallengeSchema.parse(parsed);
   }
 
