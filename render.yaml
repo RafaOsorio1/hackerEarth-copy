@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: hackerearth-api
+    env: node
+    # Turborepo requires building the API and its dependencies
+    # We also push the schema to the database on build
+    buildCommand: pnpm install && pnpm build && pnpm --filter @hackerearth/database db:push
+    startCommand: node apps/api/dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # Debes configurarlo en el dashboard de Render con tu URL de Neon
+      - key: GEMINI_API_KEY
+        sync: false # Configurar en el dashboard de Render
+      - key: CLAUDE_API_KEY
+        sync: false # Configurar en el dashboard de Render (si lo usas)
+      - key: OPENAI_API_KEY
+        sync: false # Configurar en el dashboard de Render (si lo usas)
